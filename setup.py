@@ -9,7 +9,7 @@ setup(name='isipedia-countries',
       author_email='mahe.perrette@pik-potsdam.de',
       description='Country data for isipedia',
       url='https://github.com/ISI-MIP/isipedia-countries',
-      py_modules = ['country_data.py'],
+      py_modules = ['country_data'],
       data_files = [
           ('country_data', ['countrymasks.nc', 'countrymasks_fractional.nc'])  # root directory...
       ] + [ (countrydir, glob.glob(f'{countrydir}/*') ) 
