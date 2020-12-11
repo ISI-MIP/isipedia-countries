@@ -1,5 +1,8 @@
 # Country masks
 
+## Install
+
+    pip install https://github.com/ISI-MIP/isipedia-countries/archive/master.tar.gz
 
 ## World map
 
