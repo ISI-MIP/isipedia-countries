@@ -1,5 +1,5 @@
 import glob, os
-from distutils.core import setup
+from setuptools import setup
 import versioneer
 
 setup(name='isipedia-countries',
