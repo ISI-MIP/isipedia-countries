@@ -11,7 +11,7 @@ setup(name='isipedia-countries',
       url='https://github.com/ISI-MIP/isipedia-countries',
       py_modules = ['country_data'],
       data_files = [
-          ('country_data', ['countrymasks.nc', 'countrymasks_fractional.nc', 'Estimated_population_2005.nc', 'gridarea.nc'])
+          ('country_data', ['countrymasks.tif', 'countrymasks.nc', 'countrymasks_fractional.nc', 'Estimated_population_2005.nc', 'gridarea.nc'])
       ] + [ (countrydir, glob.glob(f'{countrydir}/*') ) 
            for countrydir in glob.glob('country_data/*') if os.path.isdir(countrydir) ],
       install_requires = open('requirements.txt').read(),
