@@ -100,9 +100,9 @@ stats_variables = [
     Variable('POP_GROWTH', label='Population growth', unit='% per year', alias='pop_growth', wdi_code='SP.POP.GROW'),
     Variable('SURFACE_AREA', label='Surface area', unit='sq. km', alias='area', wdi_code='AG.SRF.TOTL.K2'),
 
-    Variable('GDP_PPP', label='Growth Domestic Product, PPP', unit='billion $ (PPP, current)', alias='gdp_ppp', wdi_code='NY.GDP.MKTP.PP.CD', wdi_scale=1e-9),
+    Variable('GDP_PPP', label='Gross Domestic Product, PPP', unit='billion $ (PPP, current)', alias='gdp_ppp', wdi_code='NY.GDP.MKTP.PP.CD', wdi_scale=1e-9),
     Variable('GDP_PER_CAPITA_PPP', label='GDP per capita, PPP', unit='$ (PPP, current)', alias='gdp_capita_ppp', wdi_code='NY.GDP.PCAP.PP.CD'),
-    Variable('GDP', label='Growth Domestic Product', unit='billion $ (current)', alias='gdp', wdi_code='NY.GDP.MKTP.CD', wdi_scale=1e-9),
+    Variable('GDP', label='Gross Domestic Product', unit='billion $ (current)', alias='gdp', wdi_code='NY.GDP.MKTP.CD', wdi_scale=1e-9),
     Variable('GDP_PER_CAPITA', label='GDP per capita', unit='$ (current)', alias='gdp_capita', wdi_code='NY.GDP.PCAP.CD'),
 
     Variable('GDP_GROWTH', label='GDP growth', unit='annual %', alias='gdp_growth', wdi_code='NY.GDP.MKTP.KD.ZG'),
