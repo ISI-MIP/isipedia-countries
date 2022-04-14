@@ -1,0 +1,11 @@
+asap0_id: country id used to uniquely identify the unit in ASAP
+name0: name of the country
+name0_shr: short name of the country (max 16 characters)
+asap_cntry: if the unit is one of the 80 ASAp countries (countries assessed by ASAP analysts every month)
+an_crop: if the crop conditions are analyzed in the country
+an_range: if the rangeland conditions are analyzed in the country
+km2_tot: total area of the country (in squared kilometers)
+km2_crop: crop area in the country according to ASAP crop mask (in squared kilometers)
+km2_range: rangeland area of the country according to ASAP rangeland mask (in squared kilometers)
+g1_units: number of sub-national units considered in the ASAP system
+isocode: isocode of the coutry (when it exists)
