@@ -50,18 +50,33 @@ def mask_to_polygon(coords, mask, tol=None, minarea=0):
     return mpoly.symmetric_difference(MultiPolygon(interiors))
 
 
-def polygon_to_mask(geom, coords, all_touched=False):
+def polygon_to_mask(geom, coords, all_touched=False, pixel_island=False):
     """return a numpy mask array which is True when it intersects with geometry
 
     all_touched : boolean, optional
         If True, all pixels touched by geometries will be burned in.  If
         false, only pixels whose center is within the polygon or that
         are selected by Bresenham's line algorithm will be burned in.
+
+    pixel_island: boolean, optional
+        if True, and all_touched is False, makes sure that at least one pixel is marked for the mask,
+        defined as the centroid of the geometry
     """
     geoms = getattr(geom, 'geoms', [geom])
     shape = coords[1].size, coords[0].size
     transform = coords_to_gdal_transform(*coords)
-    return rasterio.mask.geometry_mask(geoms, shape, transform, invert=True, all_touched=all_touched)
+    mask = rasterio.mask.geometry_mask(geoms, shape, transform, invert=True, all_touched=all_touched)
+
+    if not all_touched and pixel_island and not np.any(mask):
+        [(lo, la)] = geom.centroid.coords[:]
+        lon, lat = coords
+        res = lon[1] - lon[0]
+        i = int(round(-(la-lat[0])/res))
+        j = int(round((lo-lon[0])/res))
+        mask[i, j] = True
+
+    return mask
+
 
 
 def polygon_to_fractional_mask(geom, coords):
