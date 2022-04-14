@@ -34,8 +34,9 @@ Shape files downloaded from ASAP-GAUL:
 - https://data.europa.eu/euodp/data/dataset/jrc-10112-10004
 - Associated reference article: ["ASAP: A new global early warning system to detect anomaly hot spots of agricultural production for food security analysis"](https://www.sciencedirect.com/science/article/pii/S0308521X17309095?via%3Dihub)
 
+The shapefiles were futher processed and corrected thanks to [Natural Earth 10m data](https://www.naturalearthdata.com/downloads/10m-cultural-vectors/) v5.0.1.
 
-The data was further processed as far as countries without ISOcode are concerned:
+List of changes from ASAP-GAUL:
 
 - West Bank and Gaza Strip merged into Palestine, State Of (PSE), according to UN, ISO, WB
 
