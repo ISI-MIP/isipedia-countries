@@ -1,2 +1,13 @@
 world_bank_data
 pandas
+shapely
+rasterio
+netCDF4
+numpy
+jupyter
+matplotlib
+fiona
+bs4
+lxml
+tqdm
+scikit-image
