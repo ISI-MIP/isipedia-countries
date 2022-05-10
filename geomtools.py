@@ -75,7 +75,7 @@ def polygon_to_fractional_mask(geom, coords):
     lon, lat = coords
     res = lon[1]-lon[0]
     large = polygon_to_mask(geom, (lon, lat), all_touched=True)
-    test = geom.buffer(-res)
+    test = geom.buffer(-res*1.4142) # diagonal res*squrt(2), for more precise marginal calculation
     if test.area > 0:
         interior = polygon_to_mask(test, (lon, lat), all_touched=False)
     else:
