@@ -1,7 +1,8 @@
-import argparse
+import tqdm
 import argparse
 import numpy as np
-import xarray as xa
+# import xarray as xa
+import netCDF4 as nc
 import json
 import shapely.geometry as shg
 from geomtools import polygon_to_mask, polygon_to_fractional_mask
@@ -35,25 +36,30 @@ grouping = {
 group_codes = [g['ISIPEDIA'] for g in grouping['groups']]
 
 
-def init_dataset(js, res, version=None):
+def init_dataset(file_name, js, res, version=None):
     version = version or js['properties']['version']
     source = js['properties']['source']
 
     lon = np.arange(-180+res/2, 180, res)
     lat = np.arange(90-res/2, -90, -res)  # upside down...
     ni, nj = lat.size, lon.size
-    ds = xa.Dataset(coords={ "lat": lat, "lon": lon})
-    ds.attrs.update(dict(
-        source = source,
-        note = 'Fractional mask',
-        repository = REPOSITORY,
-        version = version,
-        ))
 
-    ds['lon'].attrs["long_name"] = 'longitude_coordinate'
-    ds['lon'].attrs["units"] = 'degree'
-    ds['lat'].attrs["long_name"] = 'latitude_coordinate'
-    ds['lat'].attrs["units"] = 'degree'
+    ds = nc.Dataset(file_name,'w', zlib=True)
+
+    ds.source = source
+    ds.repository = REPOSITORY
+    ds.version = version
+
+    ds.createDimension('lon', lon.size)
+    ds.createDimension('lat', lat.size)
+    v = ds.createVariable('lon', float, 'lon')
+    v[:] = lon
+    v.long_name = 'longitude_coordinate'
+    v.units = 'degree'
+    v = ds.createVariable('lat', float, 'lat')
+    v[:] = lat
+    v.lat_name = 'latitude_coordinate'
+    v.units = 'degree'
 
     return ds
 
@@ -61,33 +67,37 @@ def init_dataset(js, res, version=None):
 def _add_world_mask_binary(ds):
     # Add world mask from existing countries
     print("Create world mask (binary)")
-    shp = ds.lat.size, ds.lon.size
+    shp = ds['lat'].size, ds["lon"].size
     world_mask = np.zeros(shp, dtype=bool)
-    for m in ds:
+    for m in ds.variables:
         if not m.startswith('m_'):
             continue
-        mask = (ds[m].values + 0) > 0
+        mask = ds[m][:].filled(0) > 0
         world_mask |= mask
+    try:
+        world = ds.createVariable('m_world', "i1", ("lat", "lon"), zlib=True)
+    except RuntimeError:
+        world = ds['m_world']
+    world[:] = world_mask
+    ds['m_world'].long_name = 'World'
 
-    ds['m_world'] = xa.DataArray(world_mask.astype('i1'), dims=('lat', 'lon'), coords=ds.coords)
-    ds['m_world'].attrs["long_name"] = 'World'
 
+def make_binary_mask(file_name, js, res, version=None):
 
-def make_binary_mask(js, res, version=None):
-
-    ds = init_dataset(js, res, version)
-
-    lon, lat = ds.lon.values, ds.lat.values
+    ds = init_dataset(file_name, js, res, version)
+    ds.note = 'Any grid cell that is "touched" by a polygon is marked as belonging to that country'
+    lon, lat = ds['lon'][:], ds['lat'][:]
 
     countries = js['features']
 
-    for c in sorted(countries, key=lambda c: c['properties']['ISIPEDIA']):
+    for c in tqdm.tqdm(list(sorted(countries, key=lambda c: c['properties']['ISIPEDIA']))):
         props = c['properties']
         code = props['ISIPEDIA']
         name = c['properties']['NAME']
 
         geom = shg.shape(c['geometry'])
         mask = polygon_to_mask(geom, (lon, lat), all_touched=True)
+    #     mask = polygon_to_mask(geom, (lon, lat), all_touched=False)
 
         if not np.any(mask):
             print('- '+name)
@@ -96,10 +106,11 @@ def make_binary_mask(js, res, version=None):
             j = int(round((lo-lon[0])/res))
             mask[i, j] = True
 
-        ds['m_'+code] = v = xa.DataArray(mask.astype('i1'), dims=('lat', 'lon'), coords=ds.coords)
-        v.attrs["long_name"] = name
+        v = ds.createVariable('m_'+code, 'i1', ('lat', 'lon'), zlib=True)
+        v[:] = mask
+        v.long_name = name
         if 'ISIPEDIA_NOTE' in props:
-            v.attrs["note"] = props['ISIPEDIA_NOTE']
+            v.note = props['ISIPEDIA_NOTE']
 
     _add_world_mask_binary(ds)
 
@@ -113,14 +124,15 @@ def is_country(m):
 def _add_world_mask_fractional(ds):
 
     print("Create world mask (fractional)")
-    shp = ds.lat.size, ds.lon.size
-    world_mask = np.zeros(shp, dtype=float)
+    variable = ds.variables['m_AFG']
 
-    for m in ds:
+    # World mask
+    world_mask = np.zeros(variable.shape, dtype=variable.dtype)
+    for m in ds.variables:
         if not is_country(m):
             print("skip", m)
             continue
-        mask = ds[m].values
+        mask = ds[m][:].filled(0)
         world_mask += mask
 
     print("World mask ranges from", np.min(world_mask[world_mask>0]), "to", np.max(world_mask))
@@ -130,14 +142,14 @@ def _add_world_mask_fractional(ds):
 
     for ii, jj in zip(iis, jjs):
         print("normalize", ii, jj, world_mask[ii, jj])
-        for m in ds:
+        for m in ds.variables:
             if not is_country(m):
                 continue
-            value = ds[m].values[ii,jj]
+            value = ds[m][ii,jj].filled(0)
             if value > 0:
                 newvalue = value / world_mask[ii, jj]
                 print("    -", m[2:], value, "=>", newvalue)
-                ds[m].values[ii, jj] = newvalue
+                ds[m][ii, jj] = newvalue
         world_mask[ii, jj] = 1
 
     assert not np.any(world_mask > 1)
@@ -148,43 +160,49 @@ def _add_world_mask_fractional(ds):
         m = "m_"+group["ISIPEDIA"]
 #         assert not np.any(ds[m][:].filled(0) > 1), (m, 'has some grid cells > 1')
 
-        group_mask = np.zeros(shp, dtype=float)
+        group_mask = np.zeros(variable.shape, dtype=variable.dtype)
         for code in group["country_codes"]:
             try:
-                group_mask += ds[f"m_{code}"].values
+                group_mask += ds.variables[f"m_{code}"][:].filled(0)
             except KeyError:
                 print(code, "not found in countrymasks")
                 continue
         assert not np.any(group_mask > 1)
-        ds[m].values[:] = group_mask
+        ds[m][:] = group_mask
 
-    ds['m_world'] = xa.DataArray(world_mask + 0., dims=('lat', 'lon'), coords=ds.coords)
-    ds['m_world'].attrs["long_name"] = 'World'
+    try:
+        world = ds.createVariable('m_world', variable.datatype, variable.dimensions, zlib=True)
+    except RuntimeError:
+        world = ds['m_world']
+    world[:] = world_mask + 0.
+    # copy variable attributes all at once via dictionary
+    ds['m_world'].setncatts(vars(variable))
+    ds['m_world'].long_name = 'World'
 
 
+def make_fractional_mask(file_name, js, res, version=None):
 
-def make_fractional_mask(js, res, version=None):
+    ds = init_dataset(file_name, js, res, version)
+    ds.note = 'Fractional mask'
 
-    ds = init_dataset(js, res, version)
-
-    lon, lat = ds.lon.values, ds.lat.values
+    lon, lat = ds['lon'][:], ds['lat'][:]
 
     countries = js['features']
 
-    for c in sorted(countries, key=lambda c: c['properties']['ISIPEDIA']):
+    for c in tqdm.tqdm(list(sorted(countries, key=lambda c: c['properties']['ISIPEDIA']))):
         props = c['properties']
         code = props['ISIPEDIA']
         name = c['properties']['NAME']
 
+        print(code, name)
         geom = shg.shape(c['geometry'])
         mask = polygon_to_fractional_mask(geom, (lon, lat))
 
-        ds['m_'+code] = v = xa.DataArray(mask, dims=('lat', 'lon'), coords=ds.coords)
-
-        v.attrs["long_name"] = name
-
+        v = ds.createVariable('m_'+code, 'f', ('lat', 'lon'), zlib=True)
+        v[:] = mask
+        v.long_name = name
         if 'ISIPEDIA_NOTE' in props:
-            v.attrs["note"] = props['ISIPEDIA_NOTE']
+            v.note = props['ISIPEDIA_NOTE']
 
     _add_world_mask_fractional(ds)
 
@@ -211,13 +229,12 @@ def main():
     }.get(o.grid_resolution)
 
     if o.binary_mask:
-        binary = make_binary_mask(js, res, version=o.version)
-        binary.to_netcdf(f'countrymasks_{o.grid_resolution}.nc', encoding={k:{"zlib":True} for k in binary if k.startswith("m_")})
+        with make_binary_mask(f'countrymasks_{o.grid_resolution}.nc', js, res, version=o.version) as binary:
+            pass
 
     if o.fractional_mask:
-        fractional = make_fractional_mask(js, res, version=o.version)
-        fractional.to_netcdf(f'countrymasks_fractional_{o.grid_resolution}.nc', encoding={k:{"zlib":True} for k in fractional if k.startswith("m_")})
-
+        with make_fractional_mask(f'countrymasks_fractional_{o.grid_resolution}.nc', js, res, version=o.version) as fractional:
+            pass
 
 if __name__ == "__main__":
     main()
