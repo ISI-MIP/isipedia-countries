@@ -64,7 +64,7 @@ def polygon_to_mask(geom, coords, all_touched=False):
     return rasterio.mask.geometry_mask(geoms, shape, transform, invert=True, all_touched=all_touched)
 
 
-def polygon_to_fractional_mask(geom, coords):
+def polygon_to_fractional_mask(geom, coords, subgrid=None):
     """return a float-valued numpy array (values between 0 and 1) to indicate the fraction of grid pixel belonging to a country.
 
     geom: shapely geometry (Polygon or MultiPolygon)
@@ -74,6 +74,10 @@ def polygon_to_fractional_mask(geom, coords):
     """
     lon, lat = coords
     res = lon[1]-lon[0]
+    # for tiny territory we want sub-divide the grid much more
+    if subgrid is None:
+        ratio = res/geom.area**.5
+        subgrid = int(max(10, ratio*10))
     large = polygon_to_mask(geom, (lon, lat), all_touched=True)
     test = geom.buffer(-res*1.4142) # diagonal res*squrt(2), for more precise marginal calculation
     if test.area > 0:
@@ -86,9 +90,9 @@ def polygon_to_fractional_mask(geom, coords):
     ii, jj = np.where(margin)
     for i, j in zip(ii, jj):
         lo, la = lon[j], lat[i]
-        lon2 = np.linspace(lo-res/2, lo+res/2, 10)
-        lat2 = np.linspace(la-res/2, la+res/2, 10)
+        lon2 = np.linspace(lo-res/2, lo+res/2, subgrid)
+        lat2 = np.linspace(la-res/2, la+res/2, subgrid)
         mask2 = polygon_to_mask(geom, (lon2, lat2), all_touched=False)
-        fraction = mask2.sum()/100
+        fraction = mask2.sum()/subgrid**2
         mask[i, j] = fraction
     return mask
