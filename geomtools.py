@@ -72,6 +72,15 @@ def polygon_to_fractional_mask(geom, coords, subgrid=None):
 
     The approach is to first delineate the all_touched mask, then process marginal cells at higher resolution to calculate fractions.
     """
+    # apply recursively to subgeometry (useful for small islands)
+    if hasattr(geom, 'geoms'):
+        geoms = geom.geoms
+        mask = 0
+        for geom in geoms:
+            mask += polygon_to_fractional_mask(geom, coords, subgrid=subgrid)
+        return mask
+
+
     lon, lat = coords
     res = lon[1]-lon[0]
     # for tiny territory we want sub-divide the grid much more
