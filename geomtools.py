@@ -75,18 +75,17 @@ def polygon_to_fractional_mask(geom, coords, subgrid=None):
     # apply recursively to subgeometry (useful for small islands)
     if hasattr(geom, 'geoms'):
         geoms = geom.geoms
-        mask = 0
+        mask = 0.
         for geom in geoms:
             mask += polygon_to_fractional_mask(geom, coords, subgrid=subgrid)
         return mask
-
 
     lon, lat = coords
     res = lon[1]-lon[0]
     # for tiny territory we want sub-divide the grid much more
     if subgrid is None:
         ratio = res/geom.area**.5
-        subgrid = int(max(10, ratio*10))
+        subgrid = int(min(max(10, ratio*10), 100))
     large = polygon_to_mask(geom, (lon, lat), all_touched=True)
     test = geom.buffer(-res*1.4142) # diagonal res*squrt(2), for more precise marginal calculation
     if test.area > 0:
