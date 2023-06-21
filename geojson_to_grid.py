@@ -85,10 +85,13 @@ def _add_world_mask_binary(ds):
     ds['m_world'].long_name = 'World'
 
 
-def make_binary_mask(file_name, js, res, version=None):
+def make_binary_mask(file_name, js, res, version=None, all_touched=True):
 
     ds = init_dataset(file_name, js, res, version)
-    ds.note = 'Any grid cell that is "touched" by a polygon is marked as belonging to that country'
+    if all_touched:
+        ds.note = 'Any grid cell that is "touched" by a polygon is marked as belonging to that country. Note bordering grid cells will be marked as belonging to several countries.'
+    else:
+        ds.note = 'Any grid cell whose center is contained in a polygon is marked as belonging to that country. Each grid cell belongs to a single country, but some coastal grid cells may be left out (e.g. tiny island).'
     lon, lat = ds['lon'][:], ds['lat'][:]
 
     countries = js['features']
@@ -99,7 +102,7 @@ def make_binary_mask(file_name, js, res, version=None):
         name = c['properties']['NAME']
 
         geom = shg.shape(c['geometry'])
-        mask = polygon_to_mask(geom, (lon, lat), all_touched=True)
+        mask = polygon_to_mask(geom, (lon, lat), all_touched=all_touched)
     #     mask = polygon_to_mask(geom, (lon, lat), all_touched=False)
 
         if not np.any(mask):
@@ -220,7 +223,8 @@ def main():
     parser.add_argument('--grid-resolution', choices=["0.5deg", "5arcmin", "30arcsec"], default="0.5deg")
     parser.add_argument('--version')
     parser.add_argument('--fractional-mask', action="store_true")
-    parser.add_argument('--binary-mask', action="store_true")
+    parser.add_argument('--binary-mask', action="store_true", help="all_touched=True : grid cell marked when touched by polygon")
+    parser.add_argument('--binary-exclusive-mask', action="store_true", help="all_touched=False : grid cell marked when center inside polygon")
     o = parser.parse_args()
 
     js = json.load(open('countrymasks.geojson'))
@@ -232,7 +236,11 @@ def main():
     }.get(o.grid_resolution)
 
     if o.binary_mask:
-        with make_binary_mask(f'countrymasks_{o.grid_resolution}.nc', js, res, version=o.version) as binary:
+        with make_binary_mask(f'countrymasks_{o.grid_resolution}.nc', js, res, version=o.version, all_touched=True) as binary:
+            pass
+
+    if o.binary_exclusive_mask:
+        with make_binary_mask(f'countrymasks_binary_exclusive_{o.grid_resolution}.nc', js, res, version=o.version, all_touched=False) as binary:
             pass
 
     if o.fractional_mask:

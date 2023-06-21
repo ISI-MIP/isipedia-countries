@@ -17,9 +17,19 @@
 
 ## Which data?
 
-- Country mask exists as:
-    - binary mask: [countrymasks.nc](countrymasks.nc)
-    - fractional mask: [countrymasks_fractional.nc](countrymasks_fractional.nc)
+    - **"inclusive" binary masks**. Any grid cell touched by a country polygon is marked as belonging to the country. Grid cells located on a border shared by several countries will be marked as belonging to all bordering countries. File list:
+        - [countrymasks.nc](countrymasks.nc) : 0.5 degrees resolution
+        - [countrymasks_5arcmin.nc](countrymasks_5arcmin.nc) : 5' resolution
+        - [countrymasks_30arcsec.nc](countrymasks_30arcsec.nc) : 30" resolution
+
+    - **"exclusive" binary masks**. The grid cell center must be inside the country polygon to be marked as belong to the country. A grid cell can belong to only one country (provided the polygon do not overlap, which might still be the case due to resolution issues). Some grid cells on the coastline might be left out (especially tiny islands at coarse resolution, e.g Tuvalu is empty at 0.5 degrees resolution). File list:
+        - [countrymasks_binary_exclusive.nc](countrymasks_binary_exclusive.nc) : 0.5 degrees resolution
+        - [countrymasks_binary_exclusive_5arcmin.nc](countrymasks_binary_exclusive_5arcmin.nc) : 5' resolution
+        - [countrymasks_binary_exclusive_30arcsec.nc](countrymasks_binary_exclusive_30arcsec.nc) : 30" resolution
+
+    - **fractional mask**:
+        - [countrymasks_fractional.nc](countrymasks_fractional.nc) : 0.5 degrees resolution
+        - [countrymasks_fractional_5arcmin.nc](countrymasks_fractional_5arcmin.nc) : 5' resolution
 
 - Country shape files are present as:
     - one world dataset `countrymasks.geojson`
@@ -72,7 +82,4 @@ List of changes from ASAP-GAUL:
 ### Binary and fractional masks
 
 Both binary and fractional masks were derived from the vector data thanks to `rasterio.mask.geometry_mask`
-See (geomtools)[geomtools.py]'s polygon_to_mask and polygon_to_fraction_mask for details.
-
-
-
+See the code [geojson_to_grid.py](geojson_to_grid.py) for details.
