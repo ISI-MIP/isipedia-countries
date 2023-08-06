@@ -92,6 +92,33 @@ def make_exclusive(ds):
     assert sum_mask.max() == 1, repr(sum_mask.max())
 
 
+def exclusive_country_masks_as_one_labelled_array(ds):
+
+    shp = ds['lat'].size, ds["lon"].size
+    label_mask = np.zeros(shp, dtype=int)
+    label_names = {}
+    collect = {}
+    for i, m in enumerate(tqdm.tqdm(ds.variables)):
+        if not is_country(m):
+            continue
+        mask = ds[m][:].filled(0) > 0
+        label_mask[mask] = i
+        label_names[i] = m[2:]
+
+    return label_mask, label_names
+
+
+def _add_exclusive_label_mask(ds):
+    try:
+        label = ds.createVariable('labels', int, ("lat", "lon"), zlib=True)
+    except RuntimeError:
+        label = ds['labels']
+
+    label_mask, label_names = exclusive_country_masks_as_one_labelled_array(ds)
+    ds["labels"][:] = label_mask
+    ds["labels"].label_mapping = label_names
+
+
 def _add_world_mask_binary(ds):
     # Add world mask from existing countries
     print("Create world mask (binary)")
@@ -251,6 +278,7 @@ def main():
     parser.add_argument('--binary-mask', action="store_true", help="all_touched=True : grid cell marked when touched by polygon")
     parser.add_argument('--binary-exclusive-mask', action="store_true", help="all_touched=False : grid cell marked when center inside polygon")
     parser.add_argument('--force-exclusivity', action="store_true", help="ensure the pixels belong to only one country")
+    parser.add_argument('--label-mask', action="store_true", help="write a label mask (assuming exclusivity)")
     o = parser.parse_args()
 
     js = json.load(open('countrymasks.geojson'))
@@ -263,12 +291,17 @@ def main():
 
     if o.binary_mask:
         with make_binary_mask(f'countrymasks_{o.grid_resolution}.nc', js, res, version=o.version, all_touched=True) as binary:
-            pass
+            if o.force_exclusivity:
+                make_exclusive(binary)
+            if o.label_mask:
+                _add_exclusive_label_mask(binary)
 
     if o.binary_exclusive_mask:
         with make_binary_mask(f'countrymasks_binary_exclusive_{o.grid_resolution}.nc', js, res, version=o.version, all_touched=False) as binary:
             if o.force_exclusivity:
                 make_exclusive(binary)
+            if o.label_mask:
+                _add_exclusive_label_mask(binary)
 
     if o.fractional_mask:
         with make_fractional_mask(f'countrymasks_fractional_{o.grid_resolution}.nc', js, res, version=o.version) as fractional:
