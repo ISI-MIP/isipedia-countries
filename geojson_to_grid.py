@@ -67,6 +67,31 @@ def init_dataset(file_name, js, res, version=None):
     return ds
 
 
+def make_exclusive(ds):
+    # Add world mask from existing countries
+    print("Force exclusivity of pixels")
+    shp = ds['lat'].size, ds["lon"].size
+    sum_mask = np.zeros(shp, dtype=int)
+    collect = {}
+    for m in ds.variables:
+        if not is_country(m):
+            continue
+        mask = ds[m][:].filled(0) > 0
+        already_occupied = sum_mask[mask] > 0
+        n = already_occupied.sum()
+        if n > 0:
+            print(f"{m[2:]}: {n} grid cells already taken by another country, mask out ! (out of {mask.sum()} ~ {n/mask.sum()*100:.2f} %)")
+
+            i, j = np.where(mask & (sum_mask > 0))
+            for ii, jj in zip(i, j):
+                ds[m][ii,jj] = 0
+            mask = ds[m][:].filled(0) > 0
+
+        sum_mask[mask] += 1
+
+    assert sum_mask.max() == 1, repr(sum_mask.max())
+
+
 def _add_world_mask_binary(ds):
     # Add world mask from existing countries
     print("Create world mask (binary)")
@@ -225,6 +250,7 @@ def main():
     parser.add_argument('--fractional-mask', action="store_true")
     parser.add_argument('--binary-mask', action="store_true", help="all_touched=True : grid cell marked when touched by polygon")
     parser.add_argument('--binary-exclusive-mask', action="store_true", help="all_touched=False : grid cell marked when center inside polygon")
+    parser.add_argument('--force-exclusivity', action="store_true", help="ensure the pixels belong to only one country")
     o = parser.parse_args()
 
     js = json.load(open('countrymasks.geojson'))
@@ -241,7 +267,8 @@ def main():
 
     if o.binary_exclusive_mask:
         with make_binary_mask(f'countrymasks_binary_exclusive_{o.grid_resolution}.nc', js, res, version=o.version, all_touched=False) as binary:
-            pass
+            if o.force_exclusivity:
+                make_exclusive(binary)
 
     if o.fractional_mask:
         with make_fractional_mask(f'countrymasks_fractional_{o.grid_resolution}.nc', js, res, version=o.version) as fractional:

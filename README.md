@@ -17,13 +17,15 @@
 
 ## Which data?
 
+
 - **"inclusive" binary masks (border cells might belong to several countries)**. Any grid cell touched by a country polygon is marked as belonging to the country. Grid cells located on a border shared by several countries will be marked as belonging to all bordering countries. File list:
-  
+
     - [countrymasks.nc](countrymasks.nc) : 0.5 degrees resolution
     - [countrymasks_5arcmin.nc](countrymasks_5arcmin.nc) : 5' resolution
     - [countrymasks_30arcsec.nc](countrymasks_30arcsec.nc) : 30" resolution
 
-- **"exclusive" binary masks (one country per cell, but some grid cells might be left without country)**. The grid cell center must be inside the country polygon to be marked as belong to the country. A grid cell can belong to only one country (provided the polygons do not overlap, which, unfortunately, is not guaranteed). Some grid cells on the coastline might be left out (especially tiny islands at coarse resolution, e.g Tuvalu is empty at 0.5 degrees resolution). File list:
+
+- **"exclusive" binary masks (one country per cell, but some grid cells might be left without country)**. The grid cell center must be inside the country polygon to be marked as belong to the country. A grid cell can belong to only one country (provided the polygons do not overlap, which, unfortunately, is not guaranteed). Some grid cells on the coastline might be left out (especially tiny islands at coarse resolution, e.g Tuvalu is empty at 0.5 degrees resolution). The source dataset GAUL may present spurious overlaps between countries. To ensure exclusivity, the masks are further edited by removing overlapping pixels, with precedance according to alphabetical order (first country in the list takes the pixel). This amounts to less than 1%, and more generally of the order of 0.01% of all grid cells for a country mask. File list:
 
     - [countrymasks_binary_exclusive.nc](countrymasks_binary_exclusive.nc) : 0.5 degrees resolution
     - [countrymasks_binary_exclusive_5arcmin.nc](countrymasks_binary_exclusive_5arcmin.nc) : 5' resolution
